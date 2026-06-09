@@ -1,0 +1,77 @@
+name: Claude Issue Analyzer
+
+on:
+  issues:
+    types: [opened, edited]
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Create custom labels if missing
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh label create "gameplay"     --color "0075ca" --description "Game mechanics: pieces, collision, rotation, scoring" --repo ${{ github.repository }} 2>/dev/null || true
+          gh label create "ui"           --color "e4e669" --description "Visual issues: canvas, colors, layout, ghost piece"  --repo ${{ github.repository }} 2>/dev/null || true
+          gh label create "performance"  --color "e99695" --description "FPS, lag, drop interval, loop timing"               --repo ${{ github.repository }} 2>/dev/null || true
+          gh label create "documentation" --color "0052cc" --description "README, CLAUDE.md, code comments"                 --repo ${{ github.repository }} 2>/dev/null || true
+
+      - name: Analyze issue with Claude
+        uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: '--allowed-tools Bash(gh issue *)'
+          prompt: |
+            Eres un asistente técnico analizando un issue de GitHub para un repositorio de juego Tetris en JavaScript vanilla.
+
+            Issue #${{ github.event.issue.number }}
+            Título: ${{ github.event.issue.title }}
+            Cuerpo: ${{ github.event.issue.body }}
+            Evento: ${{ github.event_name }} (${{ github.event.action }})
+
+            PASO 0 — Verificar análisis previo
+            Ejecuta: gh issue view ${{ github.event.issue.number }} --comments --repo ${{ github.repository }}
+            Si ya existe un comentario que contenga "Diagnóstico de Claude", NO hagas nada más y termina.
+
+            PASO 1 — Aplicar labels (1 a 3 máximo)
+            Usa: gh issue edit ${{ github.event.issue.number }} --add-label "LABEL" --repo ${{ github.repository }}
+
+            Labels disponibles y cuándo usarlos:
+            - bug           → algo no funciona como debería
+            - enhancement   → nueva funcionalidad o mejora
+            - question      → pregunta sobre cómo funciona algo
+            - gameplay      → mecánicas: movimiento de piezas, rotación (tryRotate), colisión (collide), velocidad (dropInterval), puntuación (LINE_SCORES)
+            - ui            → visual: canvas, colores (COLORS), layout, pieza fantasma (ghost), preview de siguiente pieza
+            - performance   → FPS, lag, loop de animación (requestAnimationFrame), acumulador de drop (dropAccum)
+            - documentation → README, CLAUDE.md, comentarios en código
+            - good first issue → cambio aislado y simple
+
+            PASO 2 — Publicar comentario de diagnóstico
+            Usa: gh issue comment ${{ github.event.issue.number }} --repo ${{ github.repository }} --body "CUERPO"
+
+            Formato del comentario (en español):
+
+            ## 🔍 Diagnóstico de Claude
+
+            **Resumen:** [1-2 oraciones describiendo el problema o solicitud]
+
+            **Área afectada:** [archivo y función específica: ej. `game.js → tryRotate()`, `style.css`, `index.html`]
+
+            **Causa probable:** [análisis técnico breve basado en la arquitectura del repo: board ROWS×COLS, piezas con shape 2D, loop con requestAnimationFrame, etc.]
+
+            **Enfoque sugerido:** [paso concreto y accionable para implementar la solución o feature]
+
+            ---
+            *Análisis automático generado por Claude*
