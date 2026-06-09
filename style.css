@@ -261,3 +261,123 @@ body.light-mode .slider::before {
 input:checked + .slider::before {
   transform: translateX(22px);
 }
+
+/* ---- Leaderboard / Scores Panel ---- */
+.leaderboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  font-family: 'Courier New', Courier, monospace;
+  color: var(--fg);
+}
+
+.leaderboard-table th {
+  color: var(--label-fg);
+  font-weight: 600;
+  letter-spacing: 1px;
+  padding: 3px 4px;
+  text-align: left;
+  border-bottom: 1px solid var(--board-border);
+  transition: color 0.3s;
+}
+
+.leaderboard-table td {
+  padding: 3px 4px;
+  border-bottom: 1px solid var(--board-border);
+  transition: color 0.3s, background 0.3s;
+}
+
+.leaderboard-table tr.new-record td {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.no-records {
+  font-size: 11px;
+  color: var(--label-fg);
+  transition: color 0.3s;
+}
+
+/* Overlay leaderboard (larger text) */
+#overlay-leaderboard .leaderboard-table {
+  font-size: 13px;
+  min-width: 260px;
+}
+
+#overlay-leaderboard .leaderboard-table th,
+#overlay-leaderboard .leaderboard-table td {
+  padding: 5px 8px;
+}
+
+/* Name entry in overlay */
+#overlay-name-entry {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+#overlay-name-entry.hidden {
+  display: none;
+}
+
+.name-entry-label {
+  font-size: 13px;
+  color: var(--fg);
+}
+
+#overlay-name-input {
+  background: var(--board-bg);
+  border: 1px solid var(--board-border);
+  border-radius: 4px;
+  color: var(--fg);
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  padding: 6px 12px;
+  text-align: center;
+  width: 140px;
+  outline: none;
+  transition: background 0.3s, border-color 0.3s, color 0.3s;
+}
+
+#overlay-name-input:focus {
+  border-color: var(--accent);
+}
+
+#overlay-save-btn {
+  background: var(--accent);
+  color: var(--bg);
+  border: none;
+  border-radius: 6px;
+  padding: 8px 24px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: background 0.15s, color 0.3s;
+}
+
+#overlay-save-btn:hover {
+  background: #9bbdff;
+}
+
+/* Reset scores button */
+#reset-scores-btn {
+  margin-top: 4px;
+  background: transparent;
+  color: var(--label-fg);
+  border: 1px solid var(--board-border);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 10px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+#reset-scores-btn:hover {
+  color: #e57373;
+  border-color: #e57373;
+}
