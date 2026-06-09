@@ -48,8 +48,14 @@ const pauseRestartBtn = document.getElementById('pause-restart-btn');
 const controlsBtn = document.getElementById('controls-btn');
 const pauseControls = document.getElementById('pause-controls');
 const startLevelSelect = document.getElementById('start-level-select');
+const overlayLeaderboard = document.getElementById('overlay-leaderboard');
+const overlayNameEntry = document.getElementById('overlay-name-entry');
+const overlayNameInput = document.getElementById('overlay-name-input');
+const overlaySaveBtn = document.getElementById('overlay-save-btn');
+const scoresPanel = document.getElementById('scores-panel');
+const resetScoresBtn = document.getElementById('reset-scores-btn');
 
-let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
+let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId, maxCombo, comboStreak;
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
@@ -117,7 +123,15 @@ function clearLines() {
     score += (LINE_SCORES[cleared] || 0) * level;
     level = Math.floor(lines / 10) + 1;
     dropInterval = Math.max(100, 1000 - (level - 1) * 90);
+    if (cleared >= 2) {
+      comboStreak++;
+      maxCombo = Math.max(maxCombo, comboStreak);
+    } else {
+      comboStreak = 0;
+    }
     updateHUD();
+  } else {
+    comboStreak = 0;
   }
 }
 
@@ -244,12 +258,88 @@ function showPauseMenu() {
   startLevelSelect.value = getStoredStartLevel();
 }
 
+const HS_KEY = 'tetris_highscores';
+
+function loadScores() {
+  try {
+    return JSON.parse(localStorage.getItem(HS_KEY)) || [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveScores(scores) {
+  localStorage.setItem(HS_KEY, JSON.stringify(scores));
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function buildLeaderboardTable(scores, newIndex) {
+  if (!scores.length) return '<p class="no-records">Sin récords</p>';
+  const cols = ['#', 'Nombre', 'Puntos', 'Líneas', 'Combo'];
+  let html = '<table class="leaderboard-table"><thead><tr>';
+  cols.forEach(c => { html += `<th>${c}</th>`; });
+  html += '</tr></thead><tbody>';
+  scores.forEach((entry, i) => {
+    const cls = i === newIndex ? ' class="new-record"' : '';
+    html += `<tr${cls}><td>${i + 1}</td><td>${escapeHtml(entry.name)}</td><td>${entry.score.toLocaleString()}</td><td>${entry.lines}</td><td>${entry.maxCombo}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  return html;
+}
+
+function renderScoresPanel() {
+  const scores = loadScores();
+  scoresPanel.innerHTML = buildLeaderboardTable(scores, -1);
+}
+
 function endGame() {
   gameOver = true;
   cancelAnimationFrame(animId);
   overlayTitle.textContent = 'GAME OVER';
   overlayScore.textContent = `Puntuación: ${score.toLocaleString()}`;
   showGameOver();
+
+  const scores = loadScores();
+  const qualifies = scores.length < 5 || score > (scores[scores.length - 1] || { score: -1 }).score;
+
+  overlayLeaderboard.innerHTML = '';
+  overlayNameEntry.classList.add('hidden');
+
+  if (qualifies) {
+    overlayNameEntry.classList.remove('hidden');
+    overlayNameInput.value = '';
+    overlayNameInput.focus();
+
+    let entrySaved = false;
+    const saveEntry = () => {
+      if (entrySaved) return;
+      entrySaved = true;
+      const name = overlayNameInput.value.trim() || 'AAA';
+      const entry = { name: name.slice(0, 10), score, lines, maxCombo };
+      scores.push(entry);
+      scores.sort((a, b) => b.score - a.score);
+      scores.splice(5);
+      saveScores(scores);
+      const newIndex = scores.findIndex(e => e === entry);
+      overlayNameEntry.classList.add('hidden');
+      overlayLeaderboard.innerHTML = buildLeaderboardTable(scores, newIndex);
+      renderScoresPanel();
+    };
+
+    overlaySaveBtn.onclick = saveEntry;
+    overlayNameInput.onkeydown = e => { if (e.key === 'Enter') saveEntry(); };
+  } else {
+    overlayLeaderboard.innerHTML = buildLeaderboardTable(scores, -1);
+  }
+
   overlay.classList.remove('hidden');
 }
 
@@ -294,10 +384,14 @@ function init() {
   gameOver = false;
   dropInterval = Math.max(100, 1000 - (level - 1) * 90);
   dropAccum = 0;
+  maxCombo = 0;
+  comboStreak = 0;
   lastTime = performance.now();
   next = randomPiece();
   spawn();
   updateHUD();
+  overlayLeaderboard.innerHTML = '';
+  overlayNameEntry.classList.add('hidden');
   overlay.classList.add('hidden');
   pauseControls.classList.add('hidden');
   cancelAnimationFrame(animId);
@@ -340,11 +434,17 @@ controlsBtn.addEventListener('click', () => {
 startLevelSelect.addEventListener('change', () => {
   localStorage.setItem('tetris_startLevel', startLevelSelect.value);
 });
+resetScoresBtn.addEventListener('click', () => {
+  localStorage.removeItem(HS_KEY);
+  renderScoresPanel();
+  overlayLeaderboard.innerHTML = '';
+});
 
 document.getElementById('theme-toggle').addEventListener('change', e => {
   document.body.classList.toggle('light-mode', e.target.checked);
   draw();
 });
 
+renderScoresPanel();
 init();
 startLevelSelect.value = getStoredStartLevel();
