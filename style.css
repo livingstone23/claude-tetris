@@ -342,6 +342,39 @@ input:checked + .slider::before {
   transition: background 0.3s, color 0.3s, border-color 0.3s;
 }
 
+/* ---- Skin Selector ---- */
+#skin-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+#skin-selector button {
+  background: var(--kbd-bg);
+  color: var(--kbd-fg);
+  border: 1px solid var(--kbd-border);
+  border-radius: 5px;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  text-align: left;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+#skin-selector button:hover {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+}
+
+#skin-selector button.skin-active {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+}
+
 /* ---- Leaderboard / Scores Panel ---- */
 .leaderboard-table {
   width: 100%;
