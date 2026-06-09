@@ -61,6 +61,8 @@ jobs:
             PASO 2 — Publicar comentario de diagnóstico
             Usa: gh issue comment ${{ github.event.issue.number }} --repo ${{ github.repository }} --body "CUERPO"
 
+            IMPORTANTE: El cuerpo del comentario debe estar escrito en Markdown compatible con GitHub. Usa sintaxis estándar: encabezados con `#`, negrita con `**`, código inline con backticks, bloques de código con triple backtick, y listas con `-`. No uses HTML ni formatos propietarios.
+
             Formato del comentario (en español):
 
             ## 🔍 Diagnóstico de Claude
