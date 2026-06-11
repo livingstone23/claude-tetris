@@ -94,7 +94,6 @@ const SKINS = {
     },
   },
 };
-
 const canvas = document.getElementById('board');
 const ctx = canvas.getContext('2d');
 const nextCanvas = document.getElementById('next-canvas');
@@ -104,17 +103,143 @@ const linesEl = document.getElementById('lines');
 const levelEl = document.getElementById('level');
 const overlay = document.getElementById('overlay');
 const overlayTitle = document.getElementById('overlay-title');
-const overlayScore = document.getElementById('overlay-score');
+const overlayStats = document.getElementById('overlay-stats');
+const overlayScoreEl = document.getElementById('overlay-score');
+const overlayExtraEl = document.getElementById('overlay-extra');
+const recordEntry = document.getElementById('record-entry');
+const playerNameInput = document.getElementById('player-name');
+const saveRecordBtn = document.getElementById('save-record-btn');
+const overlayRecordsEl = document.getElementById('overlay-records');
 const restartBtn = document.getElementById('restart-btn');
-const gameoverBox = document.getElementById('gameover-box');
+const mainBox = document.getElementById('main-box');
 const pauseBox = document.getElementById('pause-box');
 const pauseControlsList = document.getElementById('pause-controls-list');
 const controlsToggleBtn = document.getElementById('controls-toggle-btn');
 const startLevelVal = document.getElementById('start-level-val');
+const resetRecordsBtn = document.getElementById('reset-records-btn');
+const panelRecordsEl = document.getElementById('panel-records');
 
-let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
+let board, current, next, score, lines, level, combo, maxCombo;
+let paused, gameOver, lastTime, dropAccum, dropInterval, animId;
 let startLevel = 1;
 let activeSkin = SKINS.retro;
+let overlayMode = 'start';
+
+// ---- Records ----
+
+function loadRecords() {
+  try { return JSON.parse(localStorage.getItem('tetris-records')) || []; }
+  catch { return []; }
+}
+
+function saveRecords(r) {
+  localStorage.setItem('tetris-records', JSON.stringify(r));
+}
+
+function isEligible(s) {
+  const r = loadRecords();
+  return s > 0 && (r.length < 5 || s > r[r.length - 1].score);
+}
+
+function addRecord(name, s, l, mc) {
+  const entry = { name, score: s, lines: l, maxCombo: mc, ts: Date.now() };
+  const r = loadRecords();
+  r.push(entry);
+  r.sort((a, b) => b.score - a.score);
+  r.splice(5);
+  saveRecords(r);
+  return r.findIndex(e => e.ts === entry.ts);
+}
+
+function esc(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function fmtScore(s) {
+  if (s >= 1e6) return (s / 1e6).toFixed(1) + 'M';
+  if (s >= 1e3) return (s / 1e3).toFixed(1) + 'K';
+  return String(s);
+}
+
+function renderRecords(elId, highlightIdx) {
+  const el = document.getElementById(elId);
+  const records = loadRecords();
+
+  if (!records.length) {
+    el.innerHTML = '<p class="no-records">Sin records aún</p>';
+    return;
+  }
+
+  if (elId === 'panel-records') {
+    el.innerHTML = records.map((r, i) =>
+      `<div class="pr-row${i === highlightIdx ? ' pr-highlight' : ''}">
+        <span class="pr-rank">${i + 1}</span>
+        <span class="pr-name">${esc(r.name)}</span>
+        <span class="pr-score">${fmtScore(r.score)}</span>
+      </div>`
+    ).join('');
+  } else {
+    el.innerHTML =
+      `<table class="records-table">
+        <thead><tr><th>#</th><th>Nombre</th><th>Pts</th><th>L</th><th>C</th></tr></thead>
+        <tbody>${records.map((r, i) =>
+          `<tr class="${i === highlightIdx ? 'rec-highlight' : ''}">
+            <td>${i + 1}</td>
+            <td>${esc(r.name)}</td>
+            <td>${r.score.toLocaleString()}</td>
+            <td>${r.lines}</td>
+            <td>${r.maxCombo}x</td>
+          </tr>`
+        ).join('')}</tbody>
+      </table>`;
+  }
+}
+
+// ---- Overlay states ----
+
+function showStartOverlay() {
+  overlayMode = 'start';
+  overlayTitle.textContent = 'TETRIS';
+  overlayTitle.dataset.mode = 'start';
+  overlayStats.classList.add('hidden');
+  recordEntry.classList.add('hidden');
+  resetRecordsBtn.classList.remove('hidden');
+  restartBtn.textContent = 'JUGAR';
+  renderRecords('overlay-records', null);
+  renderRecords('panel-records', null);
+  pauseBox.classList.add('hidden');
+  mainBox.classList.remove('hidden');
+  overlay.classList.remove('hidden');
+}
+
+function showGameOverOverlay() {
+  overlayMode = 'gameover';
+  overlayTitle.textContent = 'GAME OVER';
+  overlayTitle.dataset.mode = 'gameover';
+
+  overlayScoreEl.textContent = `Puntuación: ${score.toLocaleString()}`;
+  overlayExtraEl.textContent = `Líneas: ${lines}  |  Combo máx: ${maxCombo}x`;
+  overlayStats.classList.remove('hidden');
+
+  restartBtn.textContent = 'REINICIAR';
+  resetRecordsBtn.classList.remove('hidden');
+
+  if (isEligible(score)) {
+    recordEntry.classList.remove('hidden');
+    playerNameInput.value = '';
+    overlayRecordsEl.innerHTML = '';
+    setTimeout(() => playerNameInput.focus(), 100);
+  } else {
+    recordEntry.classList.add('hidden');
+    renderRecords('overlay-records', null);
+  }
+
+  pauseBox.classList.add('hidden');
+  mainBox.classList.remove('hidden');
+  overlay.classList.remove('hidden');
+}
+
+// ---- Game logic ----
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
@@ -178,12 +303,16 @@ function clearLines() {
     }
   }
   if (cleared) {
+    combo++;
+    maxCombo = Math.max(maxCombo, combo);
     lines += cleared;
     score += (LINE_SCORES[cleared] || 0) * level;
     level = Math.floor(lines / 10) + 1;
     dropInterval = Math.max(100, 1000 - (level - 1) * 90);
-    updateHUD();
+  } else {
+    combo = 0;
   }
+  updateHUD();
 }
 
 function ghostY() {
@@ -264,22 +393,20 @@ function drawGrid() {
 }
 
 function draw() {
+  if (!current) return;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawGrid();
 
-  // board
   for (let r = 0; r < ROWS; r++)
     for (let c = 0; c < COLS; c++)
       drawBlock(ctx, c, r, board[r][c], BLOCK);
 
-  // ghost
   const gy = ghostY();
   for (let r = 0; r < current.shape.length; r++)
     for (let c = 0; c < current.shape[r].length; c++)
       if (current.shape[r][c])
         drawBlock(ctx, current.x + c, gy + r, current.shape[r][c], BLOCK, 0.2);
 
-  // current piece
   for (let r = 0; r < current.shape.length; r++)
     for (let c = 0; c < current.shape[r].length; c++)
       drawBlock(ctx, current.x + c, current.y + r, current.shape[r][c], BLOCK);
@@ -299,28 +426,26 @@ function drawNext() {
 function endGame() {
   gameOver = true;
   cancelAnimationFrame(animId);
-  overlayTitle.textContent = 'GAME OVER';
-  overlayScore.textContent = `Puntuación: ${score.toLocaleString()}`;
-  pauseBox.classList.add('hidden');
-  gameoverBox.classList.remove('hidden');
-  overlay.classList.remove('hidden');
+  showGameOverOverlay();
 }
 
 function togglePause() {
-  if (gameOver) return;
+  if (gameOver || overlayMode === 'start') return;
   paused = !paused;
-  if (!paused) {
-    pauseBox.classList.add('hidden');
-    overlay.classList.add('hidden');
-    lastTime = performance.now();
-    loop(lastTime);
-  } else {
+  if (paused) {
     cancelAnimationFrame(animId);
     pauseControlsList.classList.add('hidden');
     controlsToggleBtn.textContent = 'Ver controles';
-    gameoverBox.classList.add('hidden');
+    mainBox.classList.add('hidden');
     pauseBox.classList.remove('hidden');
+    overlayMode = 'pause';
     overlay.classList.remove('hidden');
+  } else {
+    pauseBox.classList.add('hidden');
+    overlay.classList.add('hidden');
+    overlayMode = 'playing';
+    lastTime = performance.now();
+    animId = requestAnimationFrame(loop);
   }
 }
 
@@ -341,25 +466,25 @@ function loop(ts) {
   animId = requestAnimationFrame(loop);
 }
 
-function init() {
+function startGame() {
+  cancelAnimationFrame(animId);
   board = createBoard();
-  score = 0;
-  lines = 0;
-  level = startLevel;
-  paused = false;
-  gameOver = false;
-  dropInterval = Math.max(100, 1000 - (level - 1) * 90);
-  dropAccum = 0;
+  score = 0; lines = 0; level = startLevel; combo = 0; maxCombo = 0;
+  paused = false; gameOver = false;
+  dropInterval = Math.max(100, 1000 - (startLevel - 1) * 90); dropAccum = 0;
   lastTime = performance.now();
   next = randomPiece();
   spawn();
   updateHUD();
-  gameoverBox.classList.add('hidden');
+  mainBox.classList.add('hidden');
   pauseBox.classList.add('hidden');
+  overlayMode = 'playing';
+  renderRecords('panel-records', null);
   overlay.classList.add('hidden');
-  cancelAnimationFrame(animId);
   animId = requestAnimationFrame(loop);
 }
+
+// ---- Events ----
 
 document.addEventListener('keydown', e => {
   if (e.code === 'KeyP' || e.code === 'Escape') { e.preventDefault(); togglePause(); return; }
@@ -386,10 +511,34 @@ document.addEventListener('keydown', e => {
   updateHUD();
 });
 
-restartBtn.addEventListener('click', init);
+restartBtn.addEventListener('click', () => {
+  if (overlayMode === 'pause') {
+    togglePause();
+  } else {
+    startGame();
+  }
+});
+
+saveRecordBtn.addEventListener('click', () => {
+  const name = playerNameInput.value.trim() || 'Anónimo';
+  const idx = addRecord(name, score, lines, maxCombo);
+  recordEntry.classList.add('hidden');
+  renderRecords('overlay-records', idx);
+  renderRecords('panel-records', idx);
+});
+
+playerNameInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') saveRecordBtn.click();
+});
+
+resetRecordsBtn.addEventListener('click', () => {
+  localStorage.removeItem('tetris-records');
+  renderRecords('overlay-records', null);
+  renderRecords('panel-records', null);
+});
 
 document.getElementById('resume-btn').addEventListener('click', togglePause);
-document.getElementById('restart-pause-btn').addEventListener('click', init);
+document.getElementById('restart-pause-btn').addEventListener('click', startGame);
 
 controlsToggleBtn.addEventListener('click', () => {
   const nowHidden = pauseControlsList.classList.toggle('hidden');
@@ -405,12 +554,12 @@ document.getElementById('level-inc').addEventListener('click', () => {
 
 document.getElementById('theme-toggle').addEventListener('change', e => {
   document.body.classList.toggle('light-mode', e.target.checked);
-  draw();
+  if (current) draw();
 });
 
 document.querySelectorAll('.skin-btn').forEach(btn => {
   btn.addEventListener('click', () => setSkin(btn.dataset.skin));
 });
 
-init();
+showStartOverlay();
 setSkin(localStorage.getItem('tetris-skin') || 'retro');

@@ -63,14 +63,38 @@
             <li><kbd>P</kbd> pausa</li>
           </ul>
         </div>
+
+        <div class="panel-section">
+          <span class="label">RECORDS</span>
+          <div id="panel-records" class="panel-records"></div>
+        </div>
       </aside>
     </div>
 
     <div id="overlay" class="overlay hidden">
-      <div id="gameover-box" class="overlay-box">
-        <p id="overlay-title">GAME OVER</p>
-        <p id="overlay-score"></p>
-        <button id="restart-btn">Reiniciar</button>
+      <div id="main-box" class="overlay-box">
+        <p id="overlay-title" data-mode="start">TETRIS</p>
+
+        <div id="overlay-stats" class="hidden">
+          <p id="overlay-score"></p>
+          <p id="overlay-extra"></p>
+        </div>
+
+        <div id="record-entry" class="hidden">
+          <p class="new-record-label">¡NUEVO RECORD!</p>
+          <div class="name-input-row">
+            <input type="text" id="player-name" maxlength="12" placeholder="Tu nombre"
+                   autocomplete="off" spellcheck="false" />
+            <button id="save-record-btn">OK</button>
+          </div>
+        </div>
+
+        <div id="overlay-records"></div>
+
+        <div class="overlay-buttons">
+          <button id="restart-btn">JUGAR</button>
+          <button id="reset-records-btn" class="btn-secondary">Borrar records</button>
+        </div>
       </div>
 
       <div id="pause-box" class="overlay-box pause-menu hidden">
