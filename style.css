@@ -379,3 +379,90 @@ body.light-mode .slider::before {
 input:checked + .slider::before {
   transform: translateX(22px);
 }
+
+/* ---- Skins ---- */
+body[data-skin="neon"] {
+  --bg: #05050f;
+  --fg: #ccccff;
+  --accent: #00f5ff;
+  --board-bg: #000000;
+  --board-border: #001133;
+  --label-fg: #334455;
+  --ctrl-fg: #445566;
+  --kbd-bg: #0a0a1a;
+  --kbd-border: #001133;
+  --kbd-fg: #667788;
+  --overlay-bg: rgba(0, 0, 20, 0.88);
+}
+
+body[data-skin="neon"] .game-title {
+  color: #00f5ff;
+  text-shadow: 0 0 20px rgba(0, 245, 255, 0.9), 0 0 50px rgba(0, 245, 255, 0.5);
+}
+
+body[data-skin="pastel"] {
+  --bg: #f5f0ff;
+  --fg: #3a2a5a;
+  --accent: #9b7fd4;
+  --board-bg: #ece8f8;
+  --board-border: #c8bce8;
+  --label-fg: #9980c0;
+  --ctrl-fg: #7060a0;
+  --kbd-bg: #e0d8f0;
+  --kbd-border: #c0b4e0;
+  --kbd-fg: #6050a0;
+  --overlay-bg: rgba(180, 160, 220, 0.82);
+}
+
+body[data-skin="pastel"] .game-title {
+  color: #9b7fd4;
+  text-shadow: 0 0 15px rgba(155, 127, 212, 0.4);
+}
+
+body[data-skin="pixel"] {
+  --bg: #0a0a0a;
+  --fg: #cccccc;
+  --accent: #cc6600;
+  --board-bg: #111111;
+  --board-border: #222222;
+  --label-fg: #444444;
+  --ctrl-fg: #666666;
+  --kbd-bg: #1a1a1a;
+  --kbd-border: #333333;
+  --kbd-fg: #888888;
+  --overlay-bg: rgba(0, 0, 0, 0.88);
+}
+
+body[data-skin="pixel"] .game-title {
+  color: #cc6600;
+  text-shadow: 2px 2px 0 #552200, 0 0 20px rgba(204, 102, 0, 0.4);
+}
+
+/* ---- Skin Selector ---- */
+.skin-selector {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+
+.skin-btn {
+  padding: 5px 2px;
+  font-size: 10px;
+  letter-spacing: 1px;
+  font-weight: 600;
+  font-family: 'Courier New', Courier, monospace;
+  border: 1px solid var(--board-border);
+  background: var(--kbd-bg);
+  color: var(--label-fg);
+  cursor: pointer;
+  border-radius: 3px;
+  text-transform: uppercase;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.skin-btn:hover,
+.skin-btn.active {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+}
